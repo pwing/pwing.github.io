@@ -53,3 +53,4 @@ Without types in your code, your functions need be tested well, both at the repl
 - [Clojure Cheatsheet](https://clojure.org/api/cheatsheet) - The "go to" web page when you need to use a clojure function.
 - [Effective Programs](https://www.youtube.com/watch?v=2V1FtfBDsLU) - where Rich Hickey claims types are coupling and you're going to need a lot of testing anyway.
 - [Testing the Hard Stuff and Staying Sane](https://www.youtube.com/watch?v=zi0rHwfiX1Q) - introduction to the power of property based testing.
+- [Clojure is a Better Java than Java](https://purelyfunctional.tv/article/clojure-is-a-better-java-than-java/) - java interop with clojure.
