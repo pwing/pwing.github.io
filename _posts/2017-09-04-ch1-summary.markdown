@@ -1,0 +1,199 @@
+---
+layout: post
+title:  "Summary of Chapters 1,2,3 & 4"
+date:   2017-09-04 
+categories: scala
+---
+## Chapter 1
+is a basic introduction of functional programming, explaining the avoidance of side effects, referential transparency, the substitution model.
+
+## Chapter 2 
+Introduces the basics of the scala programming language that the authors intend to use to implement functional concepts in scala.
+
+- the object keyword.
+- compilation, scala interpreter and REPL.
+- higher order functions.
+- tail recursion and the @annotation.tailrec annotation.
+- polymorphic functions i.e. parametric polymorphism rather than polymorphism using subtyping.
+- anonymous functions.
+
+One interesting point from Chapter 2 is the "following of Types to implementations", which is basically that by looking at the type signature of a function, the implementation just logically comes out.
+
+## Chapter 3 
+Introduces functional data structures, which is basically the immutable List mainly and a short section on Trees.
+The following points are covered:
+
+- covariant type parameters are mentioned e.g. in List[+A], the + sign indicates that a list of a subtype of A is also a subtype of the list of A.
+- pattern matching can be done on subtypes, e.g. such as for Nil or Cons.
+- variadic functions
+- improving type interference for higher order functions - by having the HOFs in separate parentheses.
+- generalizing list recursion - using fold(Right) or foldLeft.
+- foldRight can be implemented in terms of foldLeft in order to make it tail recursive.
+- algebraic data types - defined as a data type which is the *sum* of its data constructors, and each data constructor is the *product* of its arguments.  Further description can be found on wikipedia.
+
+
+## Chapter 4
+explores error handling without using exceptions, i.e. the functional way.
+
+Don't use exceptions because:
+
+- they are not referentially transparent, so more difficult to reason about control flow, depending on the structure of try/catch statements.
+- they are not type safe in scala - so the compiler won't force caller of function to handle the exception.
+- checked exceptions (in Java) increase boiler plate and aren't usable in higher order functions.
+
+The Option data is a functional alternative to exceptions, where in the case that an exception would be thrown, the subtype "None" would be returned instead.
+### Working with Options
+- One way of working with Options is to pattern match against the 2 types of Options, which are None or Some, where Some would have another type that it "contains".
+- The more idiomatic way is to use map or flatMap functions on it without having to identify whether it is a None or not ([scaladoc description][scaladoc]).  Compare this to how in Java, there is often a need for null checks before executing a method.
+- deferring error handling.  Since using map or flatMap on a None will still return None, various functions can be applied until it is required to check the resulting output - hence deferring the error handling. 
+- Rather than modifying lots of existing functions to be able to handle the Option type, "lift" functions can be used to "lift" existing functions into new ones that have type signatures that support Options.  A "lift" function is actually a map function over Option.  A map2 function is required to lift functions that have 2 arguments into functions that have 2 Option arguments.
+- for comprehensions are syntactic sugar in scala to work with monads, and to simplify the syntax for the lifting of functions using flatMap and map.
+
+
+### Working with Either
+- Either is a type that is used instead of Option for error handling when an error message is to be returned rather than just having an None object.
+- for getting multipler error messages, it's possible to use Either[List[A],B] as a type.
+- the Validation type in the scalaz library can be used too.
+
+### Other Error Handling alternatives
+
+[scala.util.Try][scala-try] is an alternative to using Either.  The Try.apply() method of the companion object is used to evaluate a "code block" passed to it, in order to return either a Success object or a Failure object if an exception was thrown by the code.  This is similar to the Try function used in chapter 4 of the fp in scala book.
+
+scalaz.Validation is another alternative to scala.Either, which can be used for accumulating a list of error values as described [here][validation-example].
+
+## Chapter 5
+Chapter 5 teaches about lazy lists in Scala, using Streams.
+
+### Chapter 6
+Chapter 6 is about manipulating state in a functional way, i.e. by not mutating objects, and ends up teaching about the State monad.
+
+Functions that create a new state given an "input" state are called "state actions" or "state transitions".
+
+A type alias can be used to simplify the referencing of a state action data type.
+
+The map function can then be used to transform the output of state "actions", whilst maintaining the state.
+The unit function is used to create a state action that passes a constant back, whilst not changing the state inputted to the state action.
+map2 function is used to combine the outputs of 2 state actions together.
+flatmap is used to create a state action where given a state action, a function is applied to the output of it, in order to create another state action.
+
+The upshot is that the State monad is used to make state changes "functional" in that they are no longer done as side effects but as "intentional" effects.
+```
+var s = "JavaScript syntax highlighting";
+alert(s);
+```
+More information on how to use the State monad can be found in Tony Morris's blog which describes using State from [scalaz.][state-monad]
+A good youtube video is also [here][state-monad-vid] 
+
+```scala
+case class State[S, +A](run: S => (A, S)) {
+  def map[B](f: A => B): State[S, B] =
+    flatMap(a => unit(f(a)))
+  def map2[B,C](sb: State[S, B])(f: (A, B) => C): State[S, C] =
+    flatMap(a => sb.map(b => f(a, b)))
+  def flatMap[B](f: A => State[S, B]): State[S, B] = State(s => {
+    val (a, s1) = run(s)
+    f(a).run(s1)
+  })
+}
+
+object State {
+  type Rand[A] = State[RNG, A]
+
+  def unit[S, A](a: A): State[S, A] =
+    State(s => (a, s))
+
+  // The idiomatic solution is expressed via foldRight
+  def sequenceViaFoldRight[S,A](sas: List[State[S, A]]): State[S, List[A]] =
+    sas.foldRight(unit[S, List[A]](List()))((f, acc) => f.map2(acc)(_ :: _))
+
+  // This implementation uses a loop internally and is the same recursion
+  // pattern as a left fold. It is quite common with left folds to build
+  // up a list in reverse order, then reverse it at the end.
+  // (We could also use a collection.mutable.ListBuffer internally.)
+  def sequence[S, A](sas: List[State[S, A]]): State[S, List[A]] = {
+    def go(s: S, actions: List[State[S,A]], acc: List[A]): (List[A],S) =
+      actions match {
+        case Nil => (acc.reverse,s)
+        case h :: t => h.run(s) match { case (a,s2) => go(s2, t, a :: acc) }
+      }
+    State((s: S) => go(s,sas,List()))
+  }
+
+  // We can also write the loop using a left fold. This is tail recursive like the
+  // previous solution, but it reverses the list _before_ folding it instead of after.
+  // You might think that this is slower than the `foldRight` solution since it
+  // walks over the list twice, but it's actually faster! The `foldRight` solution
+  // technically has to also walk the list twice, since it has to unravel the call
+  // stack, not being tail recursive. And the call stack will be as tall as the list
+  // is long.
+  def sequenceViaFoldLeft[S,A](l: List[State[S, A]]): State[S, List[A]] =
+    l.reverse.foldLeft(unit[S, List[A]](List()))((acc, f) => f.map2(acc)( _ :: _ ))
+
+  def modify[S](f: S => S): State[S, Unit] = for {
+    s <- get // Gets the current state and assigns it to `s`.
+    _ <- set(f(s)) // Sets the new state to `f` applied to `s`.
+  } yield ()
+
+  def get[S]: State[S, S] = State(s => (s, s))
+
+  def set[S](s: S): State[S, Unit] = State(_ => ((), s))
+}
+
+sealed trait Input
+case object Coin extends Input
+case object Turn extends Input
+
+case class Machine(locked: Boolean, candies: Int, coins: Int)
+object Candy {
+  def update = (i: Input) => (s: Machine) =>
+    (i, s) match {
+      case (_, Machine(_, 0, _)) => s
+      case (Coin, Machine(false, _, _)) => s
+      case (Turn, Machine(true, _, _)) => s
+      case (Coin, Machine(true, candy, coin)) =>
+        Machine(false, candy, coin + 1)
+      case (Turn, Machine(false, candy, coin)) =>
+        Machine(true, candy - 1, coin)
+    }
+
+  def simulateMachine(inputs: List[Input]): State[Machine, (Int, Int)] = for {
+    _ <- sequence(inputs map (modify[Machine] _ compose update))
+    s <- get
+  } yield (s.coins, s.candies)
+}
+``` 
+
+The solution provided by fp in scala, defining the State monad, can be understood as thus:
+- State as a case class is an ADT representing the state and encapsulates the state transition as the field "run", which is the state transition function.
+- map() and map2() functions are defined in terms of flatmap.
+- the flatMap() type signature can be translated as -> given a function which converts a type into a State, return that State.
+- the flatMap() implementation can be understood as: return a State where given a state, invoke run() (on the State object that you're flatmapping), passing that state to get an output with a new state.  Then apply the function passed to flatMap onto that output to get another State object and then invoke run() on that new State object in order to return another output and state.  What is returned is another State object which you'll need to invoke run() on when you actually want to use it.
+- now that we know what flatMap() does, map() as a type signature means create a State object where the function f is run on the the output of the State object that is map() is invoked on.  Implementation wise, we pass a function to flatMap that, given a, applies f onto a, and then creates a State object which returns f(a) along with whatever original state is passed to to the run function.  So map essentially applies f onto a, without modifying the state that was returned with a.
+- map2() can be understood as, given 2 State objects, return a new State object that when run, creates a new state along with an output based on applying f onto the output of the original 2 State objects.  The implementation can be understood as: generate a State where given one State, run it to get an output, which you can then feed into the second state, which when run to get the second output, you can then apply the function f in order to get the final output and a state.  
+
+
+  def simulateMachine(inputs: List[Input]): State[Machine, (Int, Int)] = for {
+    _ <- sequence(inputs map (modify[Machine] _ compose update))
+    s <- get
+  } yield (s.coins, s.candies)
+
+can be converted to:
+
+  def simulateMachine(inputs: List[Input]): State[Machine, (Int, Int)] = 
+    sequence(inputs map (modify[Machine] _ compose update)).flatMap(
+      get 
+    )
+  for {
+    _ <- sequence(inputs map (modify[Machine] _ compose update))
+    s <- get
+  } yield (s.coins, s.candies)
+
+
+
+
+
+[state-monad]: http://blog.tmorris.net/posts/the-state-monad-for-scala-users/index.html
+[state-monad-vid]:https://www.youtube.com/watch?v=Jg3Uv_YWJqI
+[scaladoc]: https://www.scala-lang.org/api/current/scala/Option.html
+[scala-try]: http://www.scala-lang.org/api/current/scala/util/Try.html
+[validation-example]: https://www.47deg.com/blog/fp-for-the-average-joe-part-1-scalaz-validation/

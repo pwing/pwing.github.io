@@ -1,0 +1,21 @@
+---
+layout: post
+title:  "Setting up i3 on ubuntu"
+date:   2017-09-04 
+categories: i3
+---
+i3 when installed on ubuntu needs a bit more config in order to get a more user friendly experience.  Here's a few changes I've made.
+
+- add "workspace_auto_back_and_forth yes" to the i3 config file.  This will normally be the ~/.config/i3/config file.  This will allow you to just press the mod key and the workspace number twice in order to switch back to the previous workspace.  This is a default in manjaro i3 which I quite liked.  More info can be found in the i3 manual [here][i3-link]
+- auto start apps on certain workspaces, e.g. emacs on workspace 1.  You add the following lines to your i3 config file, which specify that the application with the name Emacs24 is to be assigned to workspace 1.  The "exec" line then automatically starts emacs when i3 starts.  Note that if you launch additional emacs instances that they would automatically be placed on workspace 1 too.
+
+<pre>
+assign [class="Emacs24"] 1
+exec emacs
+</pre>
+
+- set up rofi.  First install [rofi][rofi] onto linux e.g. for ubuntu, "sudo apt install rofi".  in the i3 config you can then bind the execution of rofi to a key binding e.g.
+"bindsym $mod+space exec rofi -show window".  Rofi can then be used to switch between applications without having to search through all your workspaces individually.
+
+[i3-link]: https://i3wm.org/docs/userguide.html#_automatic_back_and_forth_when_switching_to_the_current_workspace
+[rofi]: https://davedavenport.github.io/rofi/
