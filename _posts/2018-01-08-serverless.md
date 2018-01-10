@@ -41,6 +41,6 @@ Overall, the cost aspect will push people to use Serverless and the technologies
 
 ### References ###
 - ["What is Serverless?" by Mike Roberts and John Chapin](http://www.oreilly.com/programming/free/what-is-serverless.csp?intcmp=il-prog-free-info-lgen_new_site_using_serverless_architectures) - this gives a good overview of Faas and Baas.
-- Amazon's web page on lambda (https://aws.amazon.com/lambda/)
-- Amazon's web page on serverless (https://aws.amazon.com/serverless/)
-- Yan Cui's talk on AWS Lambda (https://vimeo.com/221105875)
+- [Amazon's web page on lambda](https://aws.amazon.com/lambda/)
+- [Amazon's web page on serverless](https://aws.amazon.com/serverless/)
+- [Yan Cui's talk on AWS Lambda](https://vimeo.com/221105875)
